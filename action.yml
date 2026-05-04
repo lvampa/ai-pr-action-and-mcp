@@ -3,43 +3,33 @@ description: "Automated pull request code review powered by Claude or OpenAI"
 author: "Connor Abdelnoor"
 
 inputs:
-  provider:
-    description: "AI provider to use (anthropic or openai)"
-    required: false
-    default: "anthropic"
-  model:
-    description: "Model name to use"
-    required: false
-    default: "claude-opus-4-5"
-  anthropic_api_key:
-    description: "Anthropic API key"
-    required: false
-  openai_api_key:
-    description: "OpenAI API key"
-    required: false
-  github_token:
+  github-token:
     description: "GitHub token for posting PR comments"
     required: true
-  prompt:
-    description: "Custom review prompt (uses built-in prompt if omitted)"
+  anthropic-api-key:
+    description: "Anthropic API key (required when provider is anthropic)"
+    required: false
+  openai-api-key:
+    description: "OpenAI API key (required when provider is openai)"
+    required: false
+  provider:
+    description: "Override the AI provider (anthropic or openai)"
+    required: false
+  model:
+    description: "Override the AI model"
     required: false
 
 runs:
   using: composite
   steps:
-    - uses: dtolnay/rust-toolchain@stable
-    - uses: Swatinem/rust-cache@v2
-      with:
-        workspaces: ${{ github.action_path }}
-    - run: cargo build --release
+    - name: Run AI PR Review
       shell: bash
-      working-directory: ${{ github.action_path }}
-    - run: ${{ github.action_path }}/target/release/ai-cr-action
-      shell: bash
+      run: |
+        chmod +x "${{ github.action_path }}/bin/ai-pr-action"
+        "${{ github.action_path }}/bin/ai-pr-action"
       env:
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        INPUT_OPENAI_API_KEY: ${{ inputs.openai-api-key }}
         INPUT_PROVIDER: ${{ inputs.provider }}
         INPUT_MODEL: ${{ inputs.model }}
-        INPUT_ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
-        INPUT_OPENAI_API_KEY: ${{ inputs.openai_api_key }}
-        INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
-        INPUT_PROMPT: ${{ inputs.prompt }}

@@ -1,0 +1,45 @@
+# When `bin/ai-pr-action` exists on the PR branch, run it against this repo’s
+# PRs (same-repo only — no secrets on fork PRs). See docs/specs/github-action-binary/requirements.md
+
+name: PR Review
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    # Fork PRs: no repo secrets; skip entirely.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect prebuilt binary
+        id: bin
+        run: |
+          if [ -f bin/ai-pr-action ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run AI PR review
+        if: steps.bin.outputs.present == 'true'
+        run: |
+          chmod +x bin/ai-pr-action
+          bin/ai-pr-action
+        env:
+          INPUT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          INPUT_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

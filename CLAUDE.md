@@ -44,9 +44,13 @@ Two binaries share a `core` crate. `core` owns all domain logic; the binaries ar
 summary:
   provider: anthropic        # default
   model: claude-haiku-4-5   # default
+  prompt: |                  # optional, built-in default used if absent
+    Review this diff and provide a concise summary...
 inline:
   provider: anthropic
   model: claude-opus-4-5
+  prompt: |                  # optional, built-in default used if absent
+    Review this diff and return a JSON array of findings...
 filters:
   exclude:
     - "**/*.lock"
@@ -92,3 +96,24 @@ Track implementation progress in `.ai-reviews/<branch>-tasks.json` (git-ignored)
 ```
 
 `status`: `"pending"` | `"in_progress"` | `"done"` | `"skipped"`. Update as you work — this avoids re-reading the full spec on each step.
+
+## Local Development
+
+The easiest way to test locally is via the MCP server — no need to fake GitHub Actions context variables.
+
+**Required env vars for MCP server:**
+```bash
+export GITHUB_TOKEN=ghp_...
+export ANTHROPIC_API_KEY=sk-ant-...   # or OPENAI_API_KEY if using openai
+```
+
+Copy `.env.example` to `.env` and fill in your keys. Then build and run the MCP server:
+
+```bash
+cargo build -p ai-pr-mcp
+./target/debug/ai-pr-mcp
+```
+
+Add it to your Claude Code MCP config, then use `/review-pr <pr-number>` directly from the editor.
+
+**The GitHub Action binary** (`ai-pr-action`) is only needed when running as an actual GitHub Action. It requires additional context vars (`GITHUB_SHA`, `GITHUB_EVENT_PATH`, `GITHUB_REPOSITORY`) that the Actions runner sets automatically — these are awkward to fake locally, so use the MCP path instead.
