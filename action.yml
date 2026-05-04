@@ -27,14 +27,15 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: ruby/setup-ruby@v1
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
       with:
-        ruby-version: "3.3"
-        bundler-cache: true
-        working-directory: ${{ github.action_path }}
-    - run: bundle exec ruby bin/review
+        workspaces: ${{ github.action_path }}
+    - run: cargo build --release
       shell: bash
       working-directory: ${{ github.action_path }}
+    - run: ${{ github.action_path }}/target/release/ai-cr-action
+      shell: bash
       env:
         INPUT_PROVIDER: ${{ inputs.provider }}
         INPUT_MODEL: ${{ inputs.model }}
