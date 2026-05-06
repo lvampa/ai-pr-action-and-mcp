@@ -9,6 +9,11 @@ workspace = true
 [dependencies]
 ai-pr-core = { workspace = true }
 tokio = { workspace = true }
-clap = { workspace = true }
 anyhow = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+temp-env = { workspace = true }
