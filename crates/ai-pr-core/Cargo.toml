@@ -19,8 +19,10 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
+async-trait = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
 mockito = { workspace = true }
 tokio-test = { workspace = true }
+temp-env = { workspace = true }

@@ -3,7 +3,7 @@ use anyhow::{bail, Context, Result};
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use reqwest::Client;
 use serde_json::json;
-use tracing::warn;
+use tracing::{debug, info, trace, warn};
 
 const GITHUB_API: &str = "https://api.github.com";
 
@@ -40,6 +40,7 @@ impl GitHubClient {
         repo: &str,
         pr_number: u64,
     ) -> Result<String> {
+        debug!(pr = pr_number, owner, repo, "Fetching full PR diff");
         let url = format!("{}/repos/{owner}/{repo}/pulls/{pr_number}", self.base_url);
         let resp = self
             .http
@@ -55,7 +56,9 @@ impl GitHubClient {
         if !status.is_success() {
             bail!("GitHub API error fetching PR #{pr_number} diff: HTTP {status}");
         }
-        resp.text().await.context("Failed to read diff response body")
+        let text = resp.text().await.context("Failed to read diff response body")?;
+        debug!(pr = pr_number, bytes = text.len(), "Full diff received");
+        Ok(text)
     }
 
     /// Fetch the unified diff between two SHAs (incremental re-review).
@@ -66,6 +69,7 @@ impl GitHubClient {
         base: &str,
         head: &str,
     ) -> Result<String> {
+        debug!(owner, repo, base, head, "Fetching incremental diff");
         let url = format!(
             "{}/repos/{owner}/{repo}/compare/{base}...{head}",
             self.base_url
@@ -86,7 +90,9 @@ impl GitHubClient {
                 "GitHub API error fetching compare {base}...{head}: HTTP {status}"
             );
         }
-        resp.text().await.context("Failed to read compare response body")
+        let text = resp.text().await.context("Failed to read compare response body")?;
+        debug!(base, head, bytes = text.len(), "Incremental diff received");
+        Ok(text)
     }
 
     /// Post a comment on an issue / PR.
@@ -116,6 +122,7 @@ impl GitHubClient {
         if !status.is_success() {
             bail!("GitHub API error posting comment: HTTP {status}");
         }
+        info!(owner, repo, pr = issue_number, "Comment posted");
         Ok(())
     }
 
@@ -135,21 +142,282 @@ impl GitHubClient {
             Some(base) => self.fetch_compare_diff(owner, repo, base, head_sha).await?,
         };
 
+        let raw_bytes = raw.len();
         let processed = process_diff(&raw, &config.filters.exclude, config.diff.max_kb)?;
+        debug!(
+            pr = pr_number,
+            raw_bytes,
+            filtered_bytes = processed.content.len(),
+            "Diff processed"
+        );
 
-        if let Some(ref info) = processed.truncated {
+        if let Some(ref trunc) = processed.truncated {
+            warn!(
+                pr = pr_number,
+                files_included = trunc.files_included,
+                files_total = trunc.files_total,
+                max_kb = config.diff.max_kb,
+                "Diff exceeded size limit, truncating"
+            );
             let msg = format!(
                 "⚠️ **Diff size limit reached** ({}KB). \
                 Reviewing {}/{} files.\n<!-- ai-pr-review-truncation -->",
-                config.diff.max_kb, info.files_included, info.files_total
+                config.diff.max_kb, trunc.files_included, trunc.files_total
             );
             if let Err(e) = self.post_comment(owner, repo, pr_number, &msg).await {
-                warn!("Failed to post truncation warning comment: {e}");
+                warn!(pr = pr_number, error = %e, "Failed to post truncation warning comment");
             }
         }
 
+        let size_kb = processed.content.len() / 1024;
+        let files = processed.content.matches("diff --git").count();
+        info!(pr = pr_number, size_kb, files, "PR diff fetched");
+
         Ok(processed.content)
     }
+
+    /// List all comments on an issue / PR (up to 100).
+    pub async fn list_issue_comments(
+        &self,
+        owner: &str,
+        repo: &str,
+        issue_number: u64,
+    ) -> Result<Vec<CommentData>> {
+        let url = format!(
+            "{}/repos/{owner}/{repo}/issues/{issue_number}/comments?per_page=100",
+            self.base_url
+        );
+        let resp = self
+            .http
+            .get(&url)
+            .header("Authorization", self.auth())
+            .header("Accept", "application/vnd.github.v3+json")
+            .header("User-Agent", "ai-pr-action")
+            .send()
+            .await
+            .context("Failed to list issue comments")?;
+        let status = resp.status();
+        if !status.is_success() {
+            bail!("GitHub API error listing comments: HTTP {status}");
+        }
+        resp.json().await.context("Failed to parse issue comments response")
+    }
+
+    /// Update (PATCH) an existing issue comment.
+    pub async fn update_comment(
+        &self,
+        owner: &str,
+        repo: &str,
+        comment_id: u64,
+        body: &str,
+    ) -> Result<()> {
+        let url = format!(
+            "{}/repos/{owner}/{repo}/issues/comments/{comment_id}",
+            self.base_url
+        );
+        let resp = self
+            .http
+            .patch(&url)
+            .header("Authorization", self.auth())
+            .header("Accept", "application/vnd.github.v3+json")
+            .header("User-Agent", "ai-pr-action")
+            .json(&json!({ "body": body }))
+            .send()
+            .await
+            .context("Failed to update comment")?;
+        let status = resp.status();
+        if !status.is_success() {
+            bail!("GitHub API error updating comment #{comment_id}: HTTP {status}");
+        }
+        info!(owner, repo, comment_id, "Comment updated");
+        Ok(())
+    }
+
+    /// List all reviews on a PR (up to 100).
+    pub async fn list_pr_reviews(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: u64,
+    ) -> Result<Vec<ReviewData>> {
+        let url = format!(
+            "{}/repos/{owner}/{repo}/pulls/{pr_number}/reviews?per_page=100",
+            self.base_url
+        );
+        let resp = self
+            .http
+            .get(&url)
+            .header("Authorization", self.auth())
+            .header("Accept", "application/vnd.github.v3+json")
+            .header("User-Agent", "ai-pr-action")
+            .send()
+            .await
+            .context("Failed to list PR reviews")?;
+        let status = resp.status();
+        if !status.is_success() {
+            bail!("GitHub API error listing reviews for PR #{pr_number}: HTTP {status}");
+        }
+        resp.json().await.context("Failed to parse PR reviews response")
+    }
+
+    /// Post a new pull request review with inline comments.
+    /// Returns the created review ID.
+    pub async fn post_pr_review(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: u64,
+        body: &str,
+        comments: &[ReviewCommentInput],
+    ) -> Result<u64> {
+        let url = format!(
+            "{}/repos/{owner}/{repo}/pulls/{pr_number}/reviews",
+            self.base_url
+        );
+        let comment_json: Vec<serde_json::Value> = comments
+            .iter()
+            .map(|c| json!({ "path": c.path, "line": c.line, "body": c.body }))
+            .collect();
+        let resp = self
+            .http
+            .post(&url)
+            .header("Authorization", self.auth())
+            .header("Accept", "application/vnd.github.v3+json")
+            .header("User-Agent", "ai-pr-action")
+            .json(&json!({ "body": body, "event": "COMMENT", "comments": comment_json }))
+            .send()
+            .await
+            .context("Failed to post PR review")?;
+        let status = resp.status();
+        if !status.is_success() {
+            bail!("GitHub API error posting review for PR #{pr_number}: HTTP {status}");
+        }
+        let val: serde_json::Value =
+            resp.json().await.context("Failed to parse post-review response")?;
+        let review_id = val["id"].as_u64().context("Missing 'id' in post-review response")?;
+        info!(owner, repo, pr = pr_number, review_id, "PR review posted");
+        Ok(review_id)
+    }
+
+    /// Dismiss an existing pull request review.
+    pub async fn dismiss_pr_review(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: u64,
+        review_id: u64,
+    ) -> Result<()> {
+        let url = format!(
+            "{}/repos/{owner}/{repo}/pulls/{pr_number}/reviews/{review_id}/dismissals",
+            self.base_url
+        );
+        let resp = self
+            .http
+            .put(&url)
+            .header("Authorization", self.auth())
+            .header("Accept", "application/vnd.github.v3+json")
+            .header("User-Agent", "ai-pr-action")
+            .json(&json!({ "message": "Superseded by updated review" }))
+            .send()
+            .await
+            .context("Failed to dismiss PR review")?;
+        let status = resp.status();
+        if !status.is_success() {
+            bail!("GitHub API error dismissing review #{review_id}: HTTP {status}");
+        }
+        info!(owner, repo, pr = pr_number, review_id, "PR review dismissed");
+        Ok(())
+    }
+
+    /// Get the login of the authenticated user (used to identify bot reviews).
+    pub async fn get_authenticated_user_login(&self) -> Result<String> {
+        let url = format!("{}/user", self.base_url);
+        let resp = self
+            .http
+            .get(&url)
+            .header("Authorization", self.auth())
+            .header("Accept", "application/vnd.github.v3+json")
+            .header("User-Agent", "ai-pr-action")
+            .send()
+            .await
+            .context("Failed to get authenticated user")?;
+        let status = resp.status();
+        if !status.is_success() {
+            bail!("GitHub API error getting authenticated user: HTTP {status}");
+        }
+        let val: serde_json::Value =
+            resp.json().await.context("Failed to parse user response")?;
+        val["login"]
+            .as_str()
+            .map(|s| s.to_string())
+            .context("Missing 'login' in user response")
+    }
+
+    /// Fetch PR metadata (title, head branch, head SHA).
+    pub async fn get_pr_info(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: u64,
+    ) -> Result<PrInfo> {
+        let url = format!("{}/repos/{owner}/{repo}/pulls/{pr_number}", self.base_url);
+        let resp = self
+            .http
+            .get(&url)
+            .header("Authorization", self.auth())
+            .header("Accept", "application/vnd.github.v3+json")
+            .header("User-Agent", "ai-pr-action")
+            .send()
+            .await
+            .with_context(|| format!("Failed to connect to GitHub API for PR #{pr_number}"))?;
+        let status = resp.status();
+        if !status.is_success() {
+            bail!("GitHub API error fetching PR #{pr_number} info: HTTP {status}");
+        }
+        resp.json().await.context("Failed to parse PR info response")
+    }
+}
+
+// ── Data types ────────────────────────────────────────────────────────────────
+
+#[derive(Debug, serde::Deserialize)]
+pub struct PrInfo {
+    pub number: u64,
+    pub title: String,
+    pub head: PrHead,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct PrHead {
+    #[serde(rename = "ref")]
+    pub branch: String,
+    pub sha: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct CommentData {
+    pub id: u64,
+    pub body: String,
+    pub user: UserData,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct UserData {
+    pub login: String,
+    pub id: u64,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ReviewData {
+    pub id: u64,
+    pub user: UserData,
+    pub state: String,
+}
+
+pub struct ReviewCommentInput {
+    pub path: String,
+    pub line: u64,
+    pub body: String,
 }
 
 // ── Diff processing ───────────────────────────────────────────────────────────
@@ -172,7 +440,14 @@ pub fn process_diff(raw: &str, exclude_patterns: &[String], max_kb: i64) -> Resu
 
     let after_filter: Vec<(String, String)> = files
         .into_iter()
-        .filter(|(name, _)| !matcher.is_match(name))
+        .filter(|(name, _)| {
+            if matcher.is_match(name) {
+                trace!(file = name.as_str(), "File excluded by filter");
+                false
+            } else {
+                true
+            }
+        })
         .collect();
 
     if after_filter.is_empty() {

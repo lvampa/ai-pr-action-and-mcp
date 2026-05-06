@@ -210,6 +210,56 @@ fn config_loader_negative_backoff_returns_error() {
     assert!(err.to_string().contains("backoff_seconds"));
 }
 
+// ── Requirement 2b: Review Instructions File ──────────────────────────────────
+
+#[test]
+fn config_loader_no_instructions_file_uses_builtin_default() {
+    let dir = TempDir::new().unwrap();
+    // No review-instructions.md, no review_instructions key
+    let cfg = load_config(dir.path()).unwrap();
+    assert!(!cfg.instructions.is_empty(), "instructions should be populated from built-in default");
+    assert!(cfg.instructions.contains("Correctness"), "built-in instructions should mention Correctness");
+}
+
+#[test]
+fn config_loader_default_review_instructions_file_is_used_when_present() {
+    let dir = TempDir::new().unwrap();
+    fs::write(dir.path().join("review-instructions.md"), "focus on memory safety").unwrap();
+    let cfg = load_config(dir.path()).unwrap();
+    assert_eq!(cfg.instructions.trim(), "focus on memory safety");
+}
+
+#[test]
+fn config_loader_custom_review_instructions_path_is_used() {
+    let dir = TempDir::new().unwrap();
+    fs::write(dir.path().join("my-instructions.md"), "check all error paths").unwrap();
+    write_config(&dir, "review_instructions: my-instructions.md\n");
+    let cfg = load_config(dir.path()).unwrap();
+    assert_eq!(cfg.instructions.trim(), "check all error paths");
+}
+
+#[test]
+fn config_loader_missing_custom_instructions_file_returns_error() {
+    let dir = TempDir::new().unwrap();
+    write_config(&dir, "review_instructions: nonexistent.md\n");
+    let err = load_config(dir.path()).unwrap_err();
+    assert!(
+        err.to_string().contains("nonexistent.md"),
+        "error should name the missing file, got: {err}"
+    );
+}
+
+#[test]
+fn config_loader_custom_path_takes_precedence_over_default_file() {
+    let dir = TempDir::new().unwrap();
+    // Both exist — the configured path should win
+    fs::write(dir.path().join("review-instructions.md"), "default file").unwrap();
+    fs::write(dir.path().join("custom.md"), "custom file").unwrap();
+    write_config(&dir, "review_instructions: custom.md\n");
+    let cfg = load_config(dir.path()).unwrap();
+    assert_eq!(cfg.instructions.trim(), "custom file");
+}
+
 // ── Requirement 6: Public API ─────────────────────────────────────────────────
 
 #[test]

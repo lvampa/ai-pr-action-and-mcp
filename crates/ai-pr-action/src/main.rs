@@ -77,7 +77,9 @@ fn read_pr_number(event_path: &str) -> Result<u64> {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
     if let Err(e) = run().await {
         eprintln!("Error: {e:#}");
         std::process::exit(1);
