@@ -44,13 +44,12 @@ Two binaries share a `core` crate. `core` owns all domain logic; the binaries ar
 summary:
   provider: anthropic        # default
   model: claude-haiku-4-5   # default
-  prompt: |                  # optional, built-in default used if absent
-    Review this diff and provide a concise summary...
 inline:
   provider: anthropic
   model: claude-opus-4-5
-  prompt: |                  # optional, built-in default used if absent
-    Review this diff and return a JSON array of findings...
+review_instructions: review-instructions.md  # optional — path relative to repo root
+                                              # defaults to review-instructions.md at root
+                                              # built-in default used if file absent
 filters:
   exclude:
     - "**/*.lock"

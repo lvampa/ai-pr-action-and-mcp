@@ -8,13 +8,12 @@ Reads `ai-pr-review.yml` from the repo root. Drives model selection, provider, p
 summary:
   provider: anthropic
   model: claude-haiku-4-5
-  prompt: |                    # optional — falls back to built-in default
-    Review this diff and provide a concise summary...
 inline:
   provider: anthropic
   model: claude-opus-4-5
-  prompt: |                    # optional — falls back to built-in default
-    Review this diff and return a JSON array of findings...
+review_instructions: review-instructions.md  # optional — path relative to repo root
+                                              # defaults to review-instructions.md at repo root
+                                              # built-in default used if file is absent
 filters:
   exclude:
     - "**/*.lock"
@@ -44,23 +43,31 @@ rate_limiting:
 
 ### Requirement 2: Summary and Inline Model Configuration
 
-**User Story:** As a library consumer, I want to configure provider, model, and prompt separately for each pass so that I can use a cheap model for Pass 1 and a better model for Pass 2, with custom instructions for each.
+**User Story:** As a library consumer, I want to configure provider and model separately for each pass so that I can use a cheap model for Pass 1 and a better model for Pass 2.
 
 #### Acceptance Criteria
 
 1. WHEN `summary.provider` is absent, the system SHALL default to `anthropic`.
 2. WHEN `summary.model` is absent, the system SHALL default to `claude-haiku-4-5`.
-3. WHEN `summary.prompt` is present, the system SHALL use it as the prompt for Pass 1.
-4. WHEN `summary.prompt` is absent, the system SHALL use the built-in default summary prompt.
-5. WHEN `inline.provider` is absent, the system SHALL default to `anthropic`.
-6. WHEN `inline.model` is absent, the system SHALL default to `claude-opus-4-5`.
-7. WHEN `inline.prompt` is present, the system SHALL use it as the prompt for Pass 2.
-8. WHEN `inline.prompt` is absent, the system SHALL use the built-in default inline prompt.
-9. WHEN either `provider` field is set to a value other than `anthropic` or `openai`, the system SHALL return a descriptive validation error naming the invalid value.
+3. WHEN `inline.provider` is absent, the system SHALL default to `anthropic`.
+4. WHEN `inline.model` is absent, the system SHALL default to `claude-opus-4-5`.
+5. WHEN either `provider` field is set to a value other than `anthropic` or `openai`, the system SHALL return a descriptive validation error naming the invalid value.
 
-The built-in default summary prompt SHALL instruct the model to produce a concise high-level summary of the changes, noting overall quality, key risks, and areas of concern.
+---
 
-The built-in default inline prompt SHALL instruct the model to produce a JSON array of findings with `file`, `line`, `severity` (`high`, `medium`, or `low`), and `comment` fields, covering correctness issues, security concerns, and code quality problems.
+### Requirement 2b: Review Instructions File
+
+**User Story:** As a library consumer, I want to point to a `review-instructions.md` file for review prompts so that instructions can be written in plain Markdown and kept in version control.
+
+#### Acceptance Criteria
+
+1. WHEN `review_instructions` is present in the config, the system SHALL read the file at that path relative to the repo root and use its contents as the review instructions for both passes.
+2. WHEN `review_instructions` is absent from the config, the system SHALL look for `review-instructions.md` at the repo root.
+3. WHEN the default `review-instructions.md` exists at the repo root, the system SHALL use its contents as the review instructions.
+4. WHEN neither a configured path nor the default file exists, the system SHALL use the built-in default review instructions.
+5. WHEN the configured file path does not exist, the system SHALL return a descriptive error identifying the missing file.
+6. WHEN neither a configured path nor the default file exists, the system SHALL use the built-in default review instructions embedded in the binary at compile time via `include_str!("../../defaults/review-instructions.md")` from the `core` crate.
+7. The built-in default review instructions are defined in `defaults/review-instructions.md` in the repository root and cover correctness, security, performance, and code quality.
 
 ---
 

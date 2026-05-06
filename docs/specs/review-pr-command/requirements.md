@@ -2,7 +2,7 @@
 
 ## Overview
 
-An MCP tool exposed by `ai-pr-mcp` that triggers the full two-pass review on a PR from within a Claude Code session, without needing CI to run. Returns structured high/medium/low findings rendered as Markdown inline in the Claude Code session. Simultaneously writes the review to `.ai-reviews/<branch>-review.md` for editor reference.
+An MCP tool exposed by `ai-pr-mcp` that triggers the full two-pass review on a PR from within a Claude Code session, without needing CI to run. Local only — renders findings inline in Claude Code and writes to `.ai-reviews/<branch>-review.md`. Nothing is posted to GitHub.
 
 ## Requirements
 
@@ -45,15 +45,3 @@ An MCP tool exposed by `ai-pr-mcp` that triggers the full two-pass review on a P
 3. WHEN a review file already exists for the branch, the tool SHALL overwrite it.
 4. The file write SHALL not block the tool from returning output to the Claude Code session — both SHALL complete.
 5. The tool SHALL return the path of the written file alongside the review output.
-
----
-
-### Requirement 4: GitHub Comment Posting (Optional)
-
-**User Story:** As a developer, I want the option to also post the review to GitHub so that teammates can see the feedback without me copy-pasting.
-
-#### Acceptance Criteria
-
-1. The tool SHALL accept an optional `post_to_github` boolean parameter (default: `false`).
-2. WHEN `post_to_github` is `true`, the tool SHALL post the summary comment and inline review to GitHub using the same logic as the GitHub Action binary.
-3. WHEN `post_to_github` is `false`, the tool SHALL only return output locally and write to file — no GitHub API calls for comment posting.
