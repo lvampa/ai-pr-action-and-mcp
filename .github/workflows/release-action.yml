@@ -10,6 +10,11 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag name to release (e.g. v0.1.4)"
+        required: true
 
 permissions:
   contents: write
@@ -60,10 +65,10 @@ jobs:
           fi
 
           git add bin/ai-pr-action
-          git commit -m "chore(release): Linux x86_64 (musl) binary for ${{ github.ref_name }}"
+          git commit -m "chore(release): Linux x86_64 (musl) binary for ${{ github.event.inputs.tag || github.ref_name }}"
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
       - name: Push tag (binary commit)
         if: steps.release.outputs.skip == 'false'
         # Tag is moved to include the binary commit (non–fast-forward update).
-        run: git push origin "+HEAD:${{ github.ref }}"
+        run: git push origin "+HEAD:refs/tags/${{ github.event.inputs.tag || github.ref_name }}"
