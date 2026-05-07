@@ -1,0 +1,28 @@
+[package]
+name = "ai-pr-core"
+version = "0.1.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+reqwest = { workspace = true }
+octocrab = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+figment = { workspace = true }
+backoff = { workspace = true }
+globset = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+mockito = { workspace = true }
+tokio-test = { workspace = true }
+temp-env = { workspace = true }

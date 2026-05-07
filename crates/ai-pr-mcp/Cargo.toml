@@ -1,0 +1,17 @@
+[package]
+name = "ai-pr-mcp"
+version = "0.1.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+ai-pr-core = { workspace = true }
+tokio = { workspace = true }
+rmcp = { workspace = true }
+rmcp-macros = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+anyhow = { workspace = true }
+tracing-subscriber = { workspace = true }

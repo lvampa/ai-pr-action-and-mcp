@@ -1,0 +1,73 @@
+# Builds ai-pr-mcp for Linux x86_64 and macOS arm64 on version tags,
+# then creates a GitHub Release with both binaries as downloadable assets.
+
+name: Release MCP
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-mcp-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-mcp:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset: bin/ai-pr-mcp-macos-arm64
+            artifact: ai-pr-mcp-macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: mcp-${{ matrix.target }}
+
+      - name: Build ai-pr-mcp
+        run: |
+          cargo build -p ai-pr-mcp --release --target ${{ matrix.target }}
+          mkdir -p bin
+          cp target/${{ matrix.target }}/release/ai-pr-mcp ${{ matrix.asset }}
+          strip ${{ matrix.asset }}
+          chmod +x ${{ matrix.asset }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.asset }}
+
+  mcp-release:
+    needs: build-mcp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "ai-pr-mcp-*"
+          merge-multiple: true
+          path: bin/
+
+      - name: Create release and upload MCP binaries
+        run: |
+          gh release create ${{ github.ref_name }} \
+            bin/ai-pr-mcp-macos-arm64 \
+            --generate-notes \
+            --title "${{ github.ref_name }}" \
+            --overwrite
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
