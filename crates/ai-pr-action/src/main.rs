@@ -222,8 +222,7 @@ mod tests {
     fn github_action_binary_missing_pr_number_in_event_returns_error() {
         let mut f = NamedTempFile::new().unwrap();
         write!(f, r#"{{"push":{{"ref":"main"}}}}"#).unwrap();
-        let err = read_pr_number(f.path().to_str().unwrap())
-            .unwrap_err();
+        let err = read_pr_number(f.path().to_str().unwrap()).unwrap_err();
         assert!(
             err.to_string().contains("pull_request"),
             "should mention missing field, got: {err}"
@@ -232,8 +231,7 @@ mod tests {
 
     #[test]
     fn github_action_binary_missing_event_file_returns_error() {
-        let err = read_pr_number("/nonexistent/path/event.json")
-            .unwrap_err();
+        let err = read_pr_number("/nonexistent/path/event.json").unwrap_err();
         assert!(
             err.to_string().contains("GITHUB_EVENT_PATH"),
             "should name the failing path, got: {err}"
