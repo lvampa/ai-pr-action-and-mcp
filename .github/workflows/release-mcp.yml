@@ -68,6 +68,6 @@ jobs:
             bin/ai-pr-mcp-macos-arm64 \
             --generate-notes \
             --title "${{ github.ref_name }}" \
-            --clobber
+            --overwrite
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -69,7 +69,11 @@ impl ModelProvider for AnthropicProvider {
         });
 
         let max_attempts = self.retries + 1;
-        debug!(provider = "anthropic", model = self.model.as_str(), "Sending completion request");
+        debug!(
+            provider = "anthropic",
+            model = self.model.as_str(),
+            "Sending completion request"
+        );
         for attempt in 1..=max_attempts {
             let resp = self
                 .http
@@ -96,20 +100,31 @@ impl ModelProvider for AnthropicProvider {
                     tokio::time::sleep(Duration::from_secs(self.backoff_seconds)).await;
                     continue;
                 }
-                error!(provider = "anthropic", model = self.model.as_str(), "Rate limit exhausted");
+                error!(
+                    provider = "anthropic",
+                    model = self.model.as_str(),
+                    "Rate limit exhausted"
+                );
                 bail!("Anthropic API rate limited after {max_attempts} attempt(s): HTTP 429");
             }
             if !status.is_success() {
                 bail!("Anthropic API error: HTTP {status}");
             }
 
-            let json: Value =
-                resp.json().await.context("Failed to parse Anthropic response")?;
+            let json: Value = resp
+                .json()
+                .await
+                .context("Failed to parse Anthropic response")?;
             let text = json["content"][0]["text"]
                 .as_str()
                 .context("Unexpected Anthropic response format")?
                 .to_string();
-            debug!(provider = "anthropic", model = self.model.as_str(), response_chars = text.len(), "Completion received");
+            debug!(
+                provider = "anthropic",
+                model = self.model.as_str(),
+                response_chars = text.len(),
+                "Completion received"
+            );
             return Ok(text);
         }
         bail!("Anthropic API rate limited after {max_attempts} attempt(s)");
@@ -160,7 +175,11 @@ impl ModelProvider for OpenAIProvider {
         });
 
         let max_attempts = self.retries + 1;
-        debug!(provider = "openai", model = self.model.as_str(), "Sending completion request");
+        debug!(
+            provider = "openai",
+            model = self.model.as_str(),
+            "Sending completion request"
+        );
         for attempt in 1..=max_attempts {
             let resp = self
                 .http
@@ -186,20 +205,31 @@ impl ModelProvider for OpenAIProvider {
                     tokio::time::sleep(Duration::from_secs(self.backoff_seconds)).await;
                     continue;
                 }
-                error!(provider = "openai", model = self.model.as_str(), "Rate limit exhausted");
+                error!(
+                    provider = "openai",
+                    model = self.model.as_str(),
+                    "Rate limit exhausted"
+                );
                 bail!("OpenAI API rate limited after {max_attempts} attempt(s): HTTP 429");
             }
             if !status.is_success() {
                 bail!("OpenAI API error: HTTP {status}");
             }
 
-            let json: Value =
-                resp.json().await.context("Failed to parse OpenAI response")?;
+            let json: Value = resp
+                .json()
+                .await
+                .context("Failed to parse OpenAI response")?;
             let text = json["choices"][0]["message"]["content"]
                 .as_str()
                 .context("Unexpected OpenAI response format")?
                 .to_string();
-            debug!(provider = "openai", model = self.model.as_str(), response_chars = text.len(), "Completion received");
+            debug!(
+                provider = "openai",
+                model = self.model.as_str(),
+                response_chars = text.len(),
+                "Completion received"
+            );
             return Ok(text);
         }
         bail!("OpenAI API rate limited after {max_attempts} attempt(s)");
@@ -242,8 +272,6 @@ pub fn create_provider(config: &ModelConfig) -> Result<Box<dyn ModelProvider>> {
                 config.backoff_seconds,
             )))
         }
-        other => bail!(
-            "Unknown provider: '{other}'. Accepted values: anthropic, openai"
-        ),
+        other => bail!("Unknown provider: '{other}'. Accepted values: anthropic, openai"),
     }
 }

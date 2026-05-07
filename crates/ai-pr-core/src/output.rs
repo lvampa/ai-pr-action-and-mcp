@@ -32,21 +32,30 @@ pub fn format_review_markdown(pr_info: &PrInfo, summary: &str, findings: &[Findi
         if !high.is_empty() {
             out.push_str("### 🔴 High\n\n");
             for f in &high {
-                out.push_str(&format!("- **`{}` line {}**: {}\n", f.file, f.line, f.comment));
+                out.push_str(&format!(
+                    "- **`{}` line {}**: {}\n",
+                    f.file, f.line, f.comment
+                ));
             }
             out.push('\n');
         }
         if !medium.is_empty() {
             out.push_str("### 🟡 Medium\n\n");
             for f in &medium {
-                out.push_str(&format!("- **`{}` line {}**: {}\n", f.file, f.line, f.comment));
+                out.push_str(&format!(
+                    "- **`{}` line {}**: {}\n",
+                    f.file, f.line, f.comment
+                ));
             }
             out.push('\n');
         }
         if !low.is_empty() {
             out.push_str("### 🔵 Low\n\n");
             for f in &low {
-                out.push_str(&format!("- **`{}` line {}**: {}\n", f.file, f.line, f.comment));
+                out.push_str(&format!(
+                    "- **`{}` line {}**: {}\n",
+                    f.file, f.line, f.comment
+                ));
             }
             out.push('\n');
         }
@@ -97,12 +106,20 @@ mod tests {
         PrInfo {
             number: 7,
             title: "Test PR".into(),
-            head: PrHead { branch: "feat/test".into(), sha: "deadbeef".into() },
+            head: PrHead {
+                branch: "feat/test".into(),
+                sha: "deadbeef".into(),
+            },
         }
     }
 
     fn finding(file: &str, line: u64, severity: &str, comment: &str) -> Finding {
-        Finding { file: file.into(), line, severity: severity.into(), comment: comment.into() }
+        Finding {
+            file: file.into(),
+            line,
+            severity: severity.into(),
+            comment: comment.into(),
+        }
     }
 
     #[test]

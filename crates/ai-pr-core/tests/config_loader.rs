@@ -11,10 +11,7 @@ fn write_config(dir: &TempDir, content: &str) {
 #[test]
 fn config_loader_valid_yaml_parses_to_config() {
     let dir = TempDir::new().unwrap();
-    write_config(
-        &dir,
-        "summary:\n  provider: openai\n  model: gpt-4\n",
-    );
+    write_config(&dir, "summary:\n  provider: openai\n  model: gpt-4\n");
     let cfg = load_config(dir.path()).unwrap();
     assert_eq!(cfg.summary.provider, "openai");
     assert_eq!(cfg.summary.model, "gpt-4");
@@ -100,8 +97,14 @@ fn config_loader_invalid_summary_provider_returns_error() {
     write_config(&dir, "summary:\n  provider: gemini\n");
     let err = load_config(dir.path()).unwrap_err();
     let msg = err.to_string();
-    assert!(msg.contains("gemini"), "error should name the invalid value, got: {msg}");
-    assert!(msg.contains("anthropic"), "error should list valid values, got: {msg}");
+    assert!(
+        msg.contains("gemini"),
+        "error should name the invalid value, got: {msg}"
+    );
+    assert!(
+        msg.contains("anthropic"),
+        "error should list valid values, got: {msg}"
+    );
 }
 
 #[test]
@@ -110,7 +113,10 @@ fn config_loader_invalid_inline_provider_returns_error() {
     write_config(&dir, "inline:\n  provider: cohere\n");
     let err = load_config(dir.path()).unwrap_err();
     let msg = err.to_string();
-    assert!(msg.contains("cohere"), "error should name the invalid value, got: {msg}");
+    assert!(
+        msg.contains("cohere"),
+        "error should name the invalid value, got: {msg}"
+    );
 }
 
 // ── Requirement 3: File Exclusion Filters ─────────────────────────────────────
@@ -118,7 +124,10 @@ fn config_loader_invalid_inline_provider_returns_error() {
 #[test]
 fn config_loader_custom_exclude_patterns_are_used() {
     let dir = TempDir::new().unwrap();
-    write_config(&dir, "filters:\n  exclude:\n    - \"dist/**\"\n    - \"*.min.js\"\n");
+    write_config(
+        &dir,
+        "filters:\n  exclude:\n    - \"dist/**\"\n    - \"*.min.js\"\n",
+    );
     let cfg = load_config(dir.path()).unwrap();
     assert_eq!(cfg.filters.exclude, vec!["dist/**", "*.min.js"]);
 }
@@ -217,14 +226,24 @@ fn config_loader_no_instructions_file_uses_builtin_default() {
     let dir = TempDir::new().unwrap();
     // No review-instructions.md, no review_instructions key
     let cfg = load_config(dir.path()).unwrap();
-    assert!(!cfg.instructions.is_empty(), "instructions should be populated from built-in default");
-    assert!(cfg.instructions.contains("Correctness"), "built-in instructions should mention Correctness");
+    assert!(
+        !cfg.instructions.is_empty(),
+        "instructions should be populated from built-in default"
+    );
+    assert!(
+        cfg.instructions.contains("Correctness"),
+        "built-in instructions should mention Correctness"
+    );
 }
 
 #[test]
 fn config_loader_default_review_instructions_file_is_used_when_present() {
     let dir = TempDir::new().unwrap();
-    fs::write(dir.path().join("review-instructions.md"), "focus on memory safety").unwrap();
+    fs::write(
+        dir.path().join("review-instructions.md"),
+        "focus on memory safety",
+    )
+    .unwrap();
     let cfg = load_config(dir.path()).unwrap();
     assert_eq!(cfg.instructions.trim(), "focus on memory safety");
 }
@@ -232,7 +251,11 @@ fn config_loader_default_review_instructions_file_is_used_when_present() {
 #[test]
 fn config_loader_custom_review_instructions_path_is_used() {
     let dir = TempDir::new().unwrap();
-    fs::write(dir.path().join("my-instructions.md"), "check all error paths").unwrap();
+    fs::write(
+        dir.path().join("my-instructions.md"),
+        "check all error paths",
+    )
+    .unwrap();
     write_config(&dir, "review_instructions: my-instructions.md\n");
     let cfg = load_config(dir.path()).unwrap();
     assert_eq!(cfg.instructions.trim(), "check all error paths");

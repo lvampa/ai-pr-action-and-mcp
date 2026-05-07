@@ -34,8 +34,9 @@ impl AppContext {
 
         let pr_number = read_pr_number(&event_path)?;
 
-        let provider_override =
-            std::env::var("INPUT_PROVIDER").ok().filter(|s| !s.is_empty());
+        let provider_override = std::env::var("INPUT_PROVIDER")
+            .ok()
+            .filter(|s| !s.is_empty());
         let model_override = std::env::var("INPUT_MODEL").ok().filter(|s| !s.is_empty());
 
         Ok(Self {

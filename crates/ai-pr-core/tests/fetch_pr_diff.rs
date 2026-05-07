@@ -65,8 +65,14 @@ async fn fetch_pr_diff_github_api_error_returns_descriptive_error() {
         .await
         .unwrap_err();
     let msg = err.to_string();
-    assert!(msg.contains("500"), "error should include HTTP status, got: {msg}");
-    assert!(msg.contains("99"), "error should include PR number, got: {msg}");
+    assert!(
+        msg.contains("500"),
+        "error should include HTTP status, got: {msg}"
+    );
+    assert!(
+        msg.contains("99"),
+        "error should include PR number, got: {msg}"
+    );
 }
 
 // ── Requirement 2: Delta Diff on Subsequent Runs ──────────────────────────────
@@ -128,9 +134,18 @@ async fn fetch_pr_diff_compare_api_error_returns_descriptive_error() {
         .await
         .unwrap_err();
     let msg = err.to_string();
-    assert!(msg.contains("404"), "error should include HTTP status, got: {msg}");
-    assert!(msg.contains("abc123"), "error should include base SHA, got: {msg}");
-    assert!(msg.contains("def456"), "error should include head SHA, got: {msg}");
+    assert!(
+        msg.contains("404"),
+        "error should include HTTP status, got: {msg}"
+    );
+    assert!(
+        msg.contains("abc123"),
+        "error should include base SHA, got: {msg}"
+    );
+    assert!(
+        msg.contains("def456"),
+        "error should include head SHA, got: {msg}"
+    );
 }
 
 // ── Requirement 3: File Exclusion Filters (integration path) ─────────────────

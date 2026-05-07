@@ -49,10 +49,9 @@ fn post_inline_comments_missing_field_returns_error() {
 
 #[test]
 fn post_inline_comments_finding_file_not_in_diff_is_skipped() {
-    let findings = parse_findings(
-        r#"[{"file":"other.rs","line":1,"severity":"low","comment":"note"}]"#,
-    )
-    .unwrap();
+    let findings =
+        parse_findings(r#"[{"file":"other.rs","line":1,"severity":"low","comment":"note"}]"#)
+            .unwrap();
     let diff = diff_with_hunk("src/main.rs", 1, 5);
     let valid = filter_valid_findings(findings, &diff);
     assert!(valid.is_empty());
@@ -60,10 +59,9 @@ fn post_inline_comments_finding_file_not_in_diff_is_skipped() {
 
 #[test]
 fn post_inline_comments_finding_line_outside_hunk_is_skipped() {
-    let findings = parse_findings(
-        r#"[{"file":"src/main.rs","line":99,"severity":"low","comment":"note"}]"#,
-    )
-    .unwrap();
+    let findings =
+        parse_findings(r#"[{"file":"src/main.rs","line":99,"severity":"low","comment":"note"}]"#)
+            .unwrap();
     // Hunk covers lines 1-5 only
     let diff = diff_with_hunk("src/main.rs", 1, 5);
     let valid = filter_valid_findings(findings, &diff);
@@ -72,10 +70,9 @@ fn post_inline_comments_finding_line_outside_hunk_is_skipped() {
 
 #[test]
 fn post_inline_comments_finding_within_hunk_is_kept() {
-    let findings = parse_findings(
-        r#"[{"file":"src/main.rs","line":3,"severity":"medium","comment":"note"}]"#,
-    )
-    .unwrap();
+    let findings =
+        parse_findings(r#"[{"file":"src/main.rs","line":3,"severity":"medium","comment":"note"}]"#)
+            .unwrap();
     let diff = diff_with_hunk("src/main.rs", 1, 5);
     let valid = filter_valid_findings(findings, &diff);
     assert_eq!(valid.len(), 1);
@@ -83,10 +80,9 @@ fn post_inline_comments_finding_within_hunk_is_kept() {
 
 #[test]
 fn post_inline_comments_all_findings_skipped_completes_without_error() {
-    let findings = parse_findings(
-        r#"[{"file":"missing.rs","line":1,"severity":"low","comment":"note"}]"#,
-    )
-    .unwrap();
+    let findings =
+        parse_findings(r#"[{"file":"missing.rs","line":1,"severity":"low","comment":"note"}]"#)
+            .unwrap();
     let diff = diff_with_hunk("src/main.rs", 1, 5);
     let valid = filter_valid_findings(findings, &diff);
     // No error — empty result is valid

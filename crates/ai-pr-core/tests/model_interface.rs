@@ -1,5 +1,5 @@
 use ai_pr_core::model::{
-    AnthropicProvider, ModelConfig, ModelProvider, OpenAIProvider, create_provider,
+    create_provider, AnthropicProvider, ModelConfig, ModelProvider, OpenAIProvider,
 };
 use mockito::Server;
 
@@ -36,8 +36,14 @@ async fn model_interface_anthropic_api_error_returns_descriptive_error() {
         AnthropicProvider::with_base_url("key".into(), "claude-3".into(), 0, 0, server.url());
     let err = provider.complete("prompt").await.unwrap_err();
     let msg = err.to_string();
-    assert!(msg.contains("500"), "error should include HTTP status, got: {msg}");
-    assert!(msg.contains("Anthropic"), "error should name the provider, got: {msg}");
+    assert!(
+        msg.contains("500"),
+        "error should include HTTP status, got: {msg}"
+    );
+    assert!(
+        msg.contains("Anthropic"),
+        "error should name the provider, got: {msg}"
+    );
 }
 
 #[test]
@@ -119,7 +125,10 @@ async fn model_interface_anthropic_rate_limit_exhausted_returns_error() {
         AnthropicProvider::with_base_url("key".into(), "claude-3".into(), 1, 0, server.url());
     let err = provider.complete("prompt").await.unwrap_err();
     let msg = err.to_string();
-    assert!(msg.contains("2"), "should include attempt count, got: {msg}");
+    assert!(
+        msg.contains("2"),
+        "should include attempt count, got: {msg}"
+    );
     assert!(
         msg.contains("attempt") || msg.contains("rate"),
         "should describe exhaustion, got: {msg}"
@@ -139,8 +148,7 @@ async fn model_interface_openai_complete_returns_response_text() {
         .create_async()
         .await;
 
-    let provider =
-        OpenAIProvider::with_base_url("key".into(), "gpt-4".into(), 0, 0, server.url());
+    let provider = OpenAIProvider::with_base_url("key".into(), "gpt-4".into(), 0, 0, server.url());
     let result = provider.complete("say hello").await.unwrap();
     assert_eq!(result, "hello from gpt");
     m.assert_async().await;
@@ -156,12 +164,17 @@ async fn model_interface_openai_api_error_returns_descriptive_error() {
         .create_async()
         .await;
 
-    let provider =
-        OpenAIProvider::with_base_url("key".into(), "gpt-4".into(), 0, 0, server.url());
+    let provider = OpenAIProvider::with_base_url("key".into(), "gpt-4".into(), 0, 0, server.url());
     let err = provider.complete("prompt").await.unwrap_err();
     let msg = err.to_string();
-    assert!(msg.contains("500"), "error should include HTTP status, got: {msg}");
-    assert!(msg.contains("OpenAI"), "error should name the provider, got: {msg}");
+    assert!(
+        msg.contains("500"),
+        "error should include HTTP status, got: {msg}"
+    );
+    assert!(
+        msg.contains("OpenAI"),
+        "error should name the provider, got: {msg}"
+    );
 }
 
 #[test]
@@ -220,8 +233,7 @@ async fn model_interface_openai_rate_limit_retries_and_succeeds() {
         .create_async()
         .await;
 
-    let provider =
-        OpenAIProvider::with_base_url("key".into(), "gpt-4".into(), 1, 0, server.url());
+    let provider = OpenAIProvider::with_base_url("key".into(), "gpt-4".into(), 1, 0, server.url());
     let result = provider.complete("prompt").await.unwrap();
     assert_eq!(result, "ok");
     retry_mock.assert_async().await;
@@ -237,11 +249,13 @@ async fn model_interface_openai_rate_limit_exhausted_returns_error() {
         .create_async()
         .await;
 
-    let provider =
-        OpenAIProvider::with_base_url("key".into(), "gpt-4".into(), 1, 0, server.url());
+    let provider = OpenAIProvider::with_base_url("key".into(), "gpt-4".into(), 1, 0, server.url());
     let err = provider.complete("prompt").await.unwrap_err();
     let msg = err.to_string();
-    assert!(msg.contains("2"), "should include attempt count, got: {msg}");
+    assert!(
+        msg.contains("2"),
+        "should include attempt count, got: {msg}"
+    );
     assert!(
         msg.contains("attempt") || msg.contains("rate"),
         "should describe exhaustion, got: {msg}"
@@ -287,7 +301,16 @@ fn model_interface_create_provider_unknown_returns_error() {
     };
     let err = create_provider(&config).err().expect("expected error");
     let msg = err.to_string();
-    assert!(msg.contains("cohere"), "should name the invalid provider, got: {msg}");
-    assert!(msg.contains("anthropic"), "should list valid values, got: {msg}");
-    assert!(msg.contains("openai"), "should list valid values, got: {msg}");
+    assert!(
+        msg.contains("cohere"),
+        "should name the invalid provider, got: {msg}"
+    );
+    assert!(
+        msg.contains("anthropic"),
+        "should list valid values, got: {msg}"
+    );
+    assert!(
+        msg.contains("openai"),
+        "should list valid values, got: {msg}"
+    );
 }

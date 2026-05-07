@@ -4,17 +4,16 @@ use ai_pr_core::{
     config::load_config,
     github::GitHubClient,
     inline::{filter_valid_findings, parse_findings},
-    model::{ModelConfig, create_provider},
+    model::{create_provider, ModelConfig},
     output::{format_review_markdown, parse_review_findings, write_review},
     plan::{build_review_plan, write_plan},
     review::{build_inline_prompt, build_summary_prompt},
 };
 use anyhow::Result;
 use rmcp::{
-    ErrorData, ServerHandler, ServiceExt,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::ServerInfo,
-    tool, tool_handler, tool_router,
+    tool, tool_handler, tool_router, ErrorData, ServerHandler, ServiceExt,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -70,7 +69,9 @@ impl ReviewServer {
 
     /// Fetch the PR diff and all comments, synthesize a structured review plan,
     /// and write it to `.ai-reviews/<branch>-review-plan.md`.
-    #[tool(description = "Fetch PR diff and comments, synthesize a review plan, write to .ai-reviews/<branch>-review-plan.md")]
+    #[tool(
+        description = "Fetch PR diff and comments, synthesize a review plan, write to .ai-reviews/<branch>-review-plan.md"
+    )]
     async fn synthesize_plan(
         &self,
         Parameters(input): Parameters<SynthesizePlanInput>,
@@ -93,8 +94,7 @@ impl ReviewServer {
             .map_err(internal)?;
 
         let plan = build_review_plan(&pr_info, &diff, &comments);
-        let path = write_plan(&self.repo_root, &pr_info.head.branch, &plan)
-            .map_err(internal)?;
+        let path = write_plan(&self.repo_root, &pr_info.head.branch, &plan).map_err(internal)?;
 
         Ok(format!("Review plan written to: {path}"))
     }
@@ -102,7 +102,9 @@ impl ReviewServer {
     /// Run a full two-pass AI review on a PR. Returns the review as Markdown
     /// grouped by severity and writes it to `.ai-reviews/<branch>-review.md`.
     /// Optionally posts the review to GitHub when `post_to_github` is true.
-    #[tool(description = "Run full two-pass AI review on a PR, return Markdown findings, write to .ai-reviews/<branch>-review.md")]
+    #[tool(
+        description = "Run full two-pass AI review on a PR, return Markdown findings, write to .ai-reviews/<branch>-review.md"
+    )]
     async fn review_pr(
         &self,
         Parameters(input): Parameters<ReviewPrInput>,
@@ -167,15 +169,17 @@ impl ReviewServer {
         };
 
         let review_md = format_review_markdown(&pr_info, &summary, &findings);
-        let path = write_review(&self.repo_root, &pr_info.head.branch, &review_md)
-            .map_err(internal)?;
+        let path =
+            write_review(&self.repo_root, &pr_info.head.branch, &review_md).map_err(internal)?;
 
         Ok(format!("{review_md}\n---\n_Review written to: {path}_"))
     }
 
     /// Read the review for the current branch from `.ai-reviews/<branch>-review.md`,
     /// build an actionable change plan, and (when confirmed) apply the changes and commit.
-    #[tool(description = "Read review findings for current branch, build actionable plan, apply changes and commit when confirmed=true")]
+    #[tool(
+        description = "Read review findings for current branch, build actionable plan, apply changes and commit when confirmed=true"
+    )]
     async fn apply_review(
         &self,
         Parameters(input): Parameters<ApplyReviewInput>,
@@ -215,9 +219,7 @@ impl ReviewServer {
         // Filter to actionable findings (file + line present, file exists on disk)
         let actionable: Vec<_> = findings
             .iter()
-            .filter(|f| {
-                !f.file.is_empty() && self.repo_root.join(&f.file).exists()
-            })
+            .filter(|f| !f.file.is_empty() && self.repo_root.join(&f.file).exists())
             .collect();
 
         let informational_count = findings.len() - actionable.len();
@@ -342,7 +344,9 @@ impl ReviewServer {
                 out.push_str("\nChanges committed. Use `git push` to share them.");
                 Ok(out)
             }
-            Err(e) => Err(internal(anyhow::anyhow!("Changes applied but commit failed: {e}"))),
+            Err(e) => Err(internal(anyhow::anyhow!(
+                "Changes applied but commit failed: {e}"
+            ))),
         }
     }
 
@@ -392,9 +396,7 @@ fn infer_git_remote(root: &PathBuf) -> Result<(String, String)> {
 fn parse_github_remote(url: &str) -> Option<(String, String)> {
     // https://github.com/owner/repo.git  or  https://github.com/owner/repo
     // git@github.com:owner/repo.git
-    let stripped = url
-        .trim_end_matches(".git")
-        .trim_end_matches('/');
+    let stripped = url.trim_end_matches(".git").trim_end_matches('/');
 
     if let Some(rest) = stripped.strip_prefix("git@github.com:") {
         let (owner, repo) = rest.split_once('/')?;
@@ -502,16 +504,14 @@ mod tests {
 
     #[test]
     fn parse_github_remote_https_without_suffix() {
-        let (owner, repo) =
-            parse_github_remote("https://github.com/octocat/hello-world").unwrap();
+        let (owner, repo) = parse_github_remote("https://github.com/octocat/hello-world").unwrap();
         assert_eq!(owner, "octocat");
         assert_eq!(repo, "hello-world");
     }
 
     #[test]
     fn parse_github_remote_ssh_format() {
-        let (owner, repo) =
-            parse_github_remote("git@github.com:octocat/hello-world.git").unwrap();
+        let (owner, repo) = parse_github_remote("git@github.com:octocat/hello-world.git").unwrap();
         assert_eq!(owner, "octocat");
         assert_eq!(repo, "hello-world");
     }

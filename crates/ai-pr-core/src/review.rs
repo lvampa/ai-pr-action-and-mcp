@@ -5,14 +5,13 @@ use crate::{
     model::ModelProvider,
 };
 use anyhow::Result;
-use tracing::{debug, info, warn, error};
+use tracing::{debug, error, info, warn};
 
 const SUMMARY_MARKER: &str = "<!-- ai-pr-review -->";
 const SHA_PREFIX: &str = "<!-- sha: ";
 const SHA_SUFFIX: &str = " -->";
 
-const INLINE_FORMAT_INSTRUCTION: &str =
-    "Return a JSON array of findings. \
+const INLINE_FORMAT_INSTRUCTION: &str = "Return a JSON array of findings. \
      Each finding must have: \"file\" (string), \"line\" (integer), \
      \"severity\" (\"high\"|\"medium\"|\"low\"), \"comment\" (string). \
      Only reference files and lines present in the diff. \
@@ -75,17 +74,31 @@ pub async fn run_review(
 
     // Determine base SHA for incremental diff (None = full review).
     let stored_sha: Option<String> = if force_review {
-        info!(pr = pr_number, "Force re-review requested, ignoring stored SHA");
+        info!(
+            pr = pr_number,
+            "Force re-review requested, ignoring stored SHA"
+        );
         None
     } else {
         existing_summary.and_then(|c| extract_sha(&c.body))
     };
 
-    debug!(pr = pr_number, incremental = stored_sha.is_some(), "Fetching diff");
+    debug!(
+        pr = pr_number,
+        incremental = stored_sha.is_some(),
+        "Fetching diff"
+    );
 
     // Fetch the diff.
     let diff = client
-        .fetch_pr_diff(owner, repo, pr_number, stored_sha.as_deref(), head_sha, config)
+        .fetch_pr_diff(
+            owner,
+            repo,
+            pr_number,
+            stored_sha.as_deref(),
+            head_sha,
+            config,
+        )
         .await?;
 
     // Nothing new to review.
@@ -101,18 +114,29 @@ pub async fn run_review(
         Ok(summary) => {
             let body = build_summary_body(&summary, head_sha);
             if let Some(existing) = existing_summary {
-                client.update_comment(owner, repo, existing.id, &body).await?;
-                info!(pr = pr_number, pass = 1, comment_id = existing.id, sha = head_sha, "Summary updated, SHA stored");
+                client
+                    .update_comment(owner, repo, existing.id, &body)
+                    .await?;
+                info!(
+                    pr = pr_number,
+                    pass = 1,
+                    comment_id = existing.id,
+                    sha = head_sha,
+                    "Summary updated, SHA stored"
+                );
             } else {
                 client.post_comment(owner, repo, pr_number, &body).await?;
-                info!(pr = pr_number, pass = 1, sha = head_sha, "Summary posted, SHA stored");
+                info!(
+                    pr = pr_number,
+                    pass = 1,
+                    sha = head_sha,
+                    "Summary posted, SHA stored"
+                );
             }
         }
         Err(e) => {
             error!(pr = pr_number, pass = 1, error = %e, "Summary pass failed");
-            let msg = format!(
-                "⚠️ **Pass 1 (summary) failed**: {e}\n<!-- ai-pr-review-error -->"
-            );
+            let msg = format!("⚠️ **Pass 1 (summary) failed**: {e}\n<!-- ai-pr-review-error -->");
             let _ = client.post_comment(owner, repo, pr_number, &msg).await;
             return Err(e.context("Pass 1 (summary) failed"));
         }
@@ -136,7 +160,12 @@ pub async fn run_review(
             };
             let total_findings = findings.len();
             let valid = filter_valid_findings(findings, &diff);
-            debug!(pr = pr_number, total = total_findings, valid = valid.len(), "Findings filtered");
+            debug!(
+                pr = pr_number,
+                total = total_findings,
+                valid = valid.len(),
+                "Findings filtered"
+            );
             let review_comments: Vec<ReviewCommentInput> = valid
                 .into_iter()
                 .map(|f| ReviewCommentInput {
@@ -154,8 +183,9 @@ pub async fn run_review(
                         .iter()
                         .find(|r| r.user.login == bot_login && r.state != "DISMISSED")
                     {
-                        if let Err(e) =
-                            client.dismiss_pr_review(owner, repo, pr_number, review.id).await
+                        if let Err(e) = client
+                            .dismiss_pr_review(owner, repo, pr_number, review.id)
+                            .await
                         {
                             warn!(pr = pr_number, review_id = review.id, error = %e, "Failed to dismiss previous review");
                         }
@@ -174,13 +204,16 @@ pub async fn run_review(
                 let _ = client.post_comment(owner, repo, pr_number, &msg).await;
                 return Err(e.context("Pass 2 (inline) failed: could not post review"));
             }
-            info!(pr = pr_number, pass = 2, comments = review_comments.len(), "Inline review posted");
+            info!(
+                pr = pr_number,
+                pass = 2,
+                comments = review_comments.len(),
+                "Inline review posted"
+            );
         }
         Err(e) => {
             warn!(pr = pr_number, pass = 2, error = %e, "Inline pass failed, summary standing alone");
-            let msg = format!(
-                "⚠️ **Pass 2 (inline) failed**: {e}\n<!-- ai-pr-review-error -->"
-            );
+            let msg = format!("⚠️ **Pass 2 (inline) failed**: {e}\n<!-- ai-pr-review-error -->");
             let _ = client.post_comment(owner, repo, pr_number, &msg).await;
             return Err(e.context("Pass 2 (inline) failed"));
         }
@@ -200,7 +233,10 @@ mod tests {
         CommentData {
             id,
             body: body.to_string(),
-            user: UserData { login: "user".into(), id: 1 },
+            user: UserData {
+                login: "user".into(),
+                id: 1,
+            },
         }
     }
 

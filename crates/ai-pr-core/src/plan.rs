@@ -69,13 +69,18 @@ pub fn build_review_plan(info: &PrInfo, diff: &str, comments: &[CommentData]) ->
         let src_files: Vec<&str> = changed_files
             .iter()
             .map(|s| s.as_str())
-            .filter(|f| f.ends_with(".rs") || f.ends_with(".ts") || f.ends_with(".py") || f.ends_with(".go"))
+            .filter(|f| {
+                f.ends_with(".rs") || f.ends_with(".ts") || f.ends_with(".py") || f.ends_with(".go")
+            })
             .collect();
         let config_files: Vec<&str> = changed_files
             .iter()
             .map(|s| s.as_str())
             .filter(|f| {
-                f.ends_with(".toml") || f.ends_with(".yaml") || f.ends_with(".yml") || f.ends_with(".json")
+                f.ends_with(".toml")
+                    || f.ends_with(".yaml")
+                    || f.ends_with(".yml")
+                    || f.ends_with(".json")
             })
             .collect();
 
@@ -111,14 +116,24 @@ mod tests {
     use crate::github::{PrHead, UserData};
 
     fn comment(body: &str) -> CommentData {
-        CommentData { id: 1, body: body.to_string(), user: UserData { login: "u".into(), id: 1 } }
+        CommentData {
+            id: 1,
+            body: body.to_string(),
+            user: UserData {
+                login: "u".into(),
+                id: 1,
+            },
+        }
     }
 
     fn pr_info() -> PrInfo {
         PrInfo {
             number: 42,
             title: "My PR".into(),
-            head: PrHead { branch: "feature/x".into(), sha: "abc123".into() },
+            head: PrHead {
+                branch: "feature/x".into(),
+                sha: "abc123".into(),
+            },
         }
     }
 

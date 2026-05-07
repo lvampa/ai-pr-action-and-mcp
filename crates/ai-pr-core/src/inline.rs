@@ -27,7 +27,11 @@ pub fn filter_valid_findings(findings: Vec<Finding>, diff: &str) -> Vec<Finding>
                 false
             }
             Some(lines) if !lines.contains(&f.line) => {
-                warn!(file = f.file.as_str(), line = f.line, "Skipping finding: line not in diff hunk");
+                warn!(
+                    file = f.file.as_str(),
+                    line = f.line,
+                    "Skipping finding: line not in diff hunk"
+                );
                 false
             }
             _ => true,

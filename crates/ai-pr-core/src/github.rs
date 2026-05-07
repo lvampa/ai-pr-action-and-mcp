@@ -34,12 +34,7 @@ impl GitHubClient {
     }
 
     /// Fetch the full unified diff for a PR (no prior review).
-    pub async fn fetch_full_diff(
-        &self,
-        owner: &str,
-        repo: &str,
-        pr_number: u64,
-    ) -> Result<String> {
+    pub async fn fetch_full_diff(&self, owner: &str, repo: &str, pr_number: u64) -> Result<String> {
         debug!(pr = pr_number, owner, repo, "Fetching full PR diff");
         let url = format!("{}/repos/{owner}/{repo}/pulls/{pr_number}", self.base_url);
         let resp = self
@@ -56,7 +51,10 @@ impl GitHubClient {
         if !status.is_success() {
             bail!("GitHub API error fetching PR #{pr_number} diff: HTTP {status}");
         }
-        let text = resp.text().await.context("Failed to read diff response body")?;
+        let text = resp
+            .text()
+            .await
+            .context("Failed to read diff response body")?;
         debug!(pr = pr_number, bytes = text.len(), "Full diff received");
         Ok(text)
     }
@@ -82,15 +80,18 @@ impl GitHubClient {
             .header("User-Agent", "ai-pr-action")
             .send()
             .await
-            .with_context(|| format!("Failed to connect to GitHub API for compare {base}...{head}"))?;
+            .with_context(|| {
+                format!("Failed to connect to GitHub API for compare {base}...{head}")
+            })?;
 
         let status = resp.status();
         if !status.is_success() {
-            bail!(
-                "GitHub API error fetching compare {base}...{head}: HTTP {status}"
-            );
+            bail!("GitHub API error fetching compare {base}...{head}: HTTP {status}");
         }
-        let text = resp.text().await.context("Failed to read compare response body")?;
+        let text = resp
+            .text()
+            .await
+            .context("Failed to read compare response body")?;
         debug!(base, head, bytes = text.len(), "Incremental diff received");
         Ok(text)
     }
@@ -200,7 +201,9 @@ impl GitHubClient {
         if !status.is_success() {
             bail!("GitHub API error listing comments: HTTP {status}");
         }
-        resp.json().await.context("Failed to parse issue comments response")
+        resp.json()
+            .await
+            .context("Failed to parse issue comments response")
     }
 
     /// Update (PATCH) an existing issue comment.
@@ -257,7 +260,9 @@ impl GitHubClient {
         if !status.is_success() {
             bail!("GitHub API error listing reviews for PR #{pr_number}: HTTP {status}");
         }
-        resp.json().await.context("Failed to parse PR reviews response")
+        resp.json()
+            .await
+            .context("Failed to parse PR reviews response")
     }
 
     /// Post a new pull request review with inline comments.
@@ -292,9 +297,13 @@ impl GitHubClient {
         if !status.is_success() {
             bail!("GitHub API error posting review for PR #{pr_number}: HTTP {status}");
         }
-        let val: serde_json::Value =
-            resp.json().await.context("Failed to parse post-review response")?;
-        let review_id = val["id"].as_u64().context("Missing 'id' in post-review response")?;
+        let val: serde_json::Value = resp
+            .json()
+            .await
+            .context("Failed to parse post-review response")?;
+        let review_id = val["id"]
+            .as_u64()
+            .context("Missing 'id' in post-review response")?;
         info!(owner, repo, pr = pr_number, review_id, "PR review posted");
         Ok(review_id)
     }
@@ -325,7 +334,13 @@ impl GitHubClient {
         if !status.is_success() {
             bail!("GitHub API error dismissing review #{review_id}: HTTP {status}");
         }
-        info!(owner, repo, pr = pr_number, review_id, "PR review dismissed");
+        info!(
+            owner,
+            repo,
+            pr = pr_number,
+            review_id,
+            "PR review dismissed"
+        );
         Ok(())
     }
 
@@ -345,8 +360,7 @@ impl GitHubClient {
         if !status.is_success() {
             bail!("GitHub API error getting authenticated user: HTTP {status}");
         }
-        let val: serde_json::Value =
-            resp.json().await.context("Failed to parse user response")?;
+        let val: serde_json::Value = resp.json().await.context("Failed to parse user response")?;
         val["login"]
             .as_str()
             .map(|s| s.to_string())
@@ -354,12 +368,7 @@ impl GitHubClient {
     }
 
     /// Fetch PR metadata (title, head branch, head SHA).
-    pub async fn get_pr_info(
-        &self,
-        owner: &str,
-        repo: &str,
-        pr_number: u64,
-    ) -> Result<PrInfo> {
+    pub async fn get_pr_info(&self, owner: &str, repo: &str, pr_number: u64) -> Result<PrInfo> {
         let url = format!("{}/repos/{owner}/{repo}/pulls/{pr_number}", self.base_url);
         let resp = self
             .http
@@ -374,7 +383,9 @@ impl GitHubClient {
         if !status.is_success() {
             bail!("GitHub API error fetching PR #{pr_number} info: HTTP {status}");
         }
-        resp.json().await.context("Failed to parse PR info response")
+        resp.json()
+            .await
+            .context("Failed to parse PR info response")
     }
 }
 
@@ -451,7 +462,10 @@ pub fn process_diff(raw: &str, exclude_patterns: &[String], max_kb: i64) -> Resu
         .collect();
 
     if after_filter.is_empty() {
-        return Ok(ProcessedDiff { content: String::new(), truncated: None });
+        return Ok(ProcessedDiff {
+            content: String::new(),
+            truncated: None,
+        });
     }
 
     let max_bytes = (max_kb.max(0) as usize) * 1024;
@@ -469,12 +483,18 @@ pub fn process_diff(raw: &str, exclude_patterns: &[String], max_kb: i64) -> Resu
 
     let files_included = included.len();
     let truncated = if files_included < total_files {
-        Some(TruncationInfo { files_included, files_total: total_files })
+        Some(TruncationInfo {
+            files_included,
+            files_total: total_files,
+        })
     } else {
         None
     };
 
-    Ok(ProcessedDiff { content: included.concat(), truncated })
+    Ok(ProcessedDiff {
+        content: included.concat(),
+        truncated,
+    })
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

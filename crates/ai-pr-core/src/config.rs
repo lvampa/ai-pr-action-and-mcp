@@ -3,8 +3,7 @@ use serde::Deserialize;
 use std::path::Path;
 use tracing::debug;
 
-const BUILTIN_INSTRUCTIONS: &str =
-    include_str!("../defaults/review-instructions.md");
+const BUILTIN_INSTRUCTIONS: &str = include_str!("../defaults/review-instructions.md");
 
 // ── Config structs ────────────────────────────────────────────────────────────
 
@@ -52,7 +51,10 @@ pub struct SummaryConfig {
 
 impl Default for SummaryConfig {
     fn default() -> Self {
-        Self { provider: default_provider(), model: default_summary_model() }
+        Self {
+            provider: default_provider(),
+            model: default_summary_model(),
+        }
     }
 }
 
@@ -66,7 +68,10 @@ pub struct InlineConfig {
 
 impl Default for InlineConfig {
     fn default() -> Self {
-        Self { provider: default_provider(), model: default_inline_model() }
+        Self {
+            provider: default_provider(),
+            model: default_inline_model(),
+        }
     }
 }
 
@@ -78,7 +83,9 @@ pub struct FiltersConfig {
 
 impl Default for FiltersConfig {
     fn default() -> Self {
-        Self { exclude: default_exclude_patterns() }
+        Self {
+            exclude: default_exclude_patterns(),
+        }
     }
 }
 
@@ -90,7 +97,9 @@ pub struct DiffConfig {
 
 impl Default for DiffConfig {
     fn default() -> Self {
-        Self { max_kb: default_max_kb() }
+        Self {
+            max_kb: default_max_kb(),
+        }
     }
 }
 
@@ -104,21 +113,40 @@ pub struct RateLimitingConfig {
 
 impl Default for RateLimitingConfig {
     fn default() -> Self {
-        Self { retries: default_retries(), backoff_seconds: default_backoff_seconds() }
+        Self {
+            retries: default_retries(),
+            backoff_seconds: default_backoff_seconds(),
+        }
     }
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
 
-fn default_provider() -> String { "anthropic".to_string() }
-fn default_summary_model() -> String { "claude-haiku-4-5".to_string() }
-fn default_inline_model() -> String { "claude-opus-4-5".to_string() }
-fn default_exclude_patterns() -> Vec<String> {
-    vec!["**/*.lock".to_string(), "vendor/**".to_string(), "generated/**".to_string()]
+fn default_provider() -> String {
+    "anthropic".to_string()
 }
-fn default_max_kb() -> i64 { 100 }
-fn default_retries() -> i64 { 3 }
-fn default_backoff_seconds() -> i64 { 5 }
+fn default_summary_model() -> String {
+    "claude-haiku-4-5".to_string()
+}
+fn default_inline_model() -> String {
+    "claude-opus-4-5".to_string()
+}
+fn default_exclude_patterns() -> Vec<String> {
+    vec![
+        "**/*.lock".to_string(),
+        "vendor/**".to_string(),
+        "generated/**".to_string(),
+    ]
+}
+fn default_max_kb() -> i64 {
+    100
+}
+fn default_retries() -> i64 {
+    3
+}
+fn default_backoff_seconds() -> i64 {
+    5
+}
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -137,7 +165,10 @@ impl Config {
             bail!("diff.max_kb must be positive, got {}", self.diff.max_kb);
         }
         if self.rate_limiting.retries < 0 {
-            bail!("rate_limiting.retries must be non-negative, got {}", self.rate_limiting.retries);
+            bail!(
+                "rate_limiting.retries must be non-negative, got {}",
+                self.rate_limiting.retries
+            );
         }
         if self.rate_limiting.backoff_seconds < 0 {
             bail!(
@@ -158,8 +189,7 @@ pub fn load_config(repo_root: &Path) -> Result<Config> {
     let mut config: Config = if path.exists() {
         let raw = std::fs::read_to_string(&path)
             .with_context(|| format!("Failed to read {}", path.display()))?;
-        serde_yaml::from_str(&raw)
-            .with_context(|| format!("Failed to parse {}", path.display()))?
+        serde_yaml::from_str(&raw).with_context(|| format!("Failed to parse {}", path.display()))?
     } else {
         Config::default()
     };
